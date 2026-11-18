@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Onshelf Bin Tool</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--bd:#e3e6ea;--ac:#1d6fe8;--acx:#fff;--ok:#14803c;--err:#c62828;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1e2126;--tx:#eceff3;--mut:#9aa3af;--bd:#2f343b;--ac:#5b9bff;--acx:#0b1220;--ok:#4ade80;--err:#ff7b7b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:12px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tab{flex:1;padding:12px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font-size:16px;font-weight:600;cursor:pointer}
+.tab.on{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:12px}
+h2{margin:0 0 8px;font-size:15px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;gap:8px}
+input,select{flex:1;min-width:0;padding:13px;font-size:17px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
+button{font:inherit;cursor:pointer}
+.btn{padding:12px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-weight:600}
+.btn.p{background:var(--ac);color:var(--acx);border-color:var(--ac)}
+.btn.g{background:var(--ok);color:#fff;border-color:var(--ok)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.binb{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.binb b{font-size:24px}
+.item{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--bd)}
+.item .s{flex:1;word-break:break-all;font-weight:600}
+.q{display:flex;align-items:center;gap:6px}
+.q button{width:36px;height:36px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font-size:18px}
+.q span{min-width:30px;text-align:center;font-weight:700}
+.mut{color:var(--mut);font-size:14px}
+.msg{min-height:22px;font-size:14px;margin-top:6px}
+.msg.ok{color:var(--ok)}.msg.err{color:var(--err)}
+.stats{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+.stats div{font-size:14px;color:var(--mut)}.stats b{display:block;font-size:22px;color:var(--tx)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{color:var(--mut);font-weight:600}
+.ban{background:var(--card);border:1px solid var(--err);color:var(--err);padding:10px;border-radius:10px;margin-bottom:12px;font-size:14px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:20;display:none;flex-direction:column;justify-content:center;padding:16px}
+.ov.on{display:flex}
+#reader{width:100%;max-width:480px;margin:0 auto;background:#000;border-radius:12px;overflow:hidden}
+.ov .btn{max-width:480px;width:100%;margin:12px auto 0}
+#ovm{color:#fff;text-align:center;margin-top:10px;font-size:14px}
+.pinbox{max-width:360px;width:100%;margin:0 auto;background:var(--card);border-radius:14px;padding:18px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab on" id="t1">📱 Scan (Mobile)</button>
+    <button class="tab" id="t2">💻 Data (Computer)</button>
+  </div>
+  <div id="ban" class="ban hide"></div>
+
+  <div id="v1">
+    <div class="card" id="binCard">
+      <h2>Step 1 · Bin select / scan</h2>
+      <div class="row">
+        <input id="binIn" placeholder="Bin number scan ya type karo" autocomplete="off" autocapitalize="characters">
+        <button class="btn p" id="binOk">OK</button>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="binCam" style="width:100%">📷 Camera se bin scan karo</button></div>
+    </div>
+
+    <div id="work" class="hide">
+      <div class="card binb">
+        <div><div class="mut">Current BIN</div><b id="binName"></b></div>
+        <button class="btn" id="binChg">Bin badlo</button>
+      </div>
+      <div class="card">
+        <h2>Step 2 · Product scan karo</h2>
+        <div class="row">
+          <input id="skuIn" placeholder="SKU / barcode scan ya type" autocomplete="off" autocapitalize="characters">
+          <button class="btn p" id="skuOk">Add</button>
+        </div>
+        <div class="row" style="margin-top:8px"><button class="btn" id="skuCam" style="width:100%">📷 Camera se product scan karo</button></div>
+        <div class="msg" id="msg"></div>
+      </div>
+      <div class="card">
+        <h2>Scanned · <span id="cnt">0</span> SKU · <span id="tq">0</span> qty</h2>
+        <div id="list"><div class="mut">Abhi koi product scan nahi hua.</div></div>
+      </div>
+      <button class="btn g" id="save" style="width:100%;padding:16px;font-size:18px" disabled>✅ Bin Full — Save</button>
+    </div>
+  </div>
+
+  <div id="v2" class="hide">
+    <div class="card">
+      <div class="stats">
+        <div><b id="sB">0</b>Bins</div>
+        <div><b id="sR">0</b>Unique rows</div>
+        <div><b id="sQ">0</b>Total QTY</div>
+      </div>
+      <div class="row" style="margin-bottom:8px"><select id="dsel"></select><button class="btn" id="rf" title="Refresh">🔄</button></div>
+      <div class="row" style="flex-wrap:wrap">
+        <button class="btn p" id="dl" style="flex:1">⬇ Excel download</button>
+        <button class="btn" id="clr">🗑 Is date ka data clear</button>
+      </div>
+      <div class="mut" style="margin-top:8px">Ek date chuno to us din ki alag Excel file banegi. “Sab dates” chuno to ek file mein har date ki alag sheet banegi.</div>
+      <div class="msg" id="msg2"></div>
+    </div>
+    <div class="card tw">
+      <table><thead><tr><th>S.No</th><th>SKU</th><th>QTY</th><th>BIN</th></tr></thead><tbody id="tb"></tbody></table>
+      <div id="empty" class="mut" style="padding:10px 0">Abhi tak koi saved data nahi hai.</div>
+    </div>
+  </div>
+</div>
+
+<div id="ov" class="ov">
+  <div id="reader"></div>
+  <div id="ovm">Barcode ko frame ke andar rakho</div>
+  <button class="btn" id="ovx">✕ Band karo</button>
+</div>
+
+<div id="pinov" class="ov">
+  <div class="pinbox">
+    <h2>PIN daalo</h2>
+    <div class="row"><input id="pinIn" type="password" inputmode="numeric" placeholder="App PIN" autocomplete="off"><button class="btn p" id="pinOk">Open</button></div>
+    <div class="msg err" id="pinMsg"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const norm=s=>String(s||'').trim().toUpperCase();
+let bin='',items=[],saves=[],online=false,qr=null,qrMode='',lastCode='',lastAt=0,pin='',poll=null;
+
+// ---- storage helpers ----
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let dev=ls.get('onshelf-dev');
+if(!dev){dev=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);ls.set('onshelf-dev',dev);}
+pin=ls.get('onshelf-pin')||'';
+
+// ---- API ----
+async function api(method,url,body){
+  const r=await fetch(url,{method,headers:{'Content-Type':'application/json','x-pin':pin},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401){showPin('PIN galat hai');throw new Error('PIN galat');}
+  if(!r.ok)throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+
+// ---- draft (phone + server backup; refresh par bacha rehta hai) ----
+let dT=null,dBusy=false;
+function saveDraft(){
+  ls.set('onshelf-draft',JSON.stringify({bin,items}));
+  clearTimeout(dT);dT=setTimeout(pushDraft,700);
+}
+async function pushDraft(){
+  if(!online)return;
+  if(dBusy){dT=setTimeout(pushDraft,700);return;}
+  dBusy=true;
+  try{await api('POST','/api/draft',{dev,bin,items});}catch(e){}
+  dBusy=false;
+}
+function loadDraft(){try{const d=JSON.parse(ls.get('onshelf-draft')||'null');if(d){bin=d.bin||'';items=d.items||[]}}catch(e){}}
+
+// ---- UI helpers ----
+function say(t,c){const m=$('msg');m.textContent=t;m.className='msg '+(c||'');}
+function tab(n){$('v1').classList.toggle('hide',n!==1);$('v2').classList.toggle('hide',n!==2);$('t1').classList.toggle('on',n===1);$('t2').classList.toggle('on',n===2);}
+$('t1').onclick=()=>tab(1);$('t2').onclick=()=>{tab(2);if(online)refresh();};
+if(window.innerWidth>=900)tab(2);
+function banner(t){const b=$('ban');if(t){b.textContent=t;b.classList.remove('hide')}else b.classList.add('hide');}
+
+function render(){
+  const has=!!bin;
+  $('binCard').classList.toggle('hide',has);
+  $('work').classList.toggle('hide',!has);
+  $('binName').textContent=bin;
+  $('cnt').textContent=items.length;
+  $('tq').textContent=items.reduce((a,b)=>a+b.qty,0);
+  $('save').disabled=!items.length||!online;
+  const L=$('list');L.innerHTML='';
+  if(!items.length){L.innerHTML='<div class="mut">Abhi koi product scan nahi hua.</div>';return;}
+  items.slice().reverse().forEach(it=>{
+    const d=document.createElement('div');d.className='item';
+    const s=document.createElement('div');s.className='s';s.textContent=it.sku;
+    const q=document.createElement('div');q.className='q';
+    const m=document.createElement('button');m.textContent='−';
+    const n=document.createElement('span');n.textContent=it.qty;
+    const p=document.createElement('button');p.textContent='+';
+    const x=document.createElement('button');x.textContent='✕';
+    m.onclick=()=>{it.qty=Math.max(1,it.qty-1);saveDraft();render()};
+    p.onclick=()=>{it.qty++;saveDraft();render()};
+    x.onclick=()=>{items=items.filter(i=>i!==it);saveDraft();render()};
+    q.append(m,n,p,x);d.append(s,q);L.append(d);
+  });
+}
+
+// ---- bin & sku ----
+function setBin(v){v=norm(v);if(!v)return;bin=v;$('binIn').value='';saveDraft();render();say('');setTimeout(()=>$('skuIn').focus(),50);}
+function addSku(v){
+  v=norm(v);if(!v)return false;
+  const f=items.find(i=>i.sku===v);
+  if(f){f.qty++;say('✓ '+v+' — qty '+f.qty,'ok');}else{items.push({sku:v,qty:1});say('✓ '+v+' add hua','ok');}
+  try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}
+  saveDraft();render();return true;
+}
+$('binOk').onclick=()=>setBin($('binIn').value);
+$('binIn').onkeydown=e=>{if(e.key==='Enter')setBin(e.target.value)};
+$('skuOk').onclick=()=>{addSku($('skuIn').value);$('skuIn').value='';$('skuIn').focus()};
+$('skuIn').onkeydown=e=>{if(e.key==='Enter'){addSku(e.target.value);e.target.value='';}};
+$('binChg').onclick=()=>{if(items.length&&!confirm('Scan kiya hua data hat jayega. Bin badlein?'))return;bin='';items=[];saveDraft();render();};
+
+// ---- save ----
+$('save').onclick=async()=>{
+  if(!online||!items.length)return;
+  if(!confirm('BIN '+bin+' ka data save karein? ('+items.length+' SKU)'))return;
+  $('save').disabled=true;
+  try{
+    await api('POST','/api/saves',{bin,items:items.map(i=>({sku:i.sku,qty:i.qty})),by:dev});
+    const b=bin;bin='';items=[];saveDraft();render();say('✅ BIN '+b+' save ho gayi. Agli bin scan karo.','ok');
+    refresh();
+  }catch(e){say('Save nahi hua: '+e.message,'err');render();}
+};
+
+// ---- camera ----
+async function openCam(mode){
+  qrMode=mode;$('ov').classList.add('on');$('ovm').textContent='Barcode ko frame ke andar rakho';
+  if(typeof Html5Qrcode==='undefined'){$('ovm').textContent='Scanner load nahi hua. Type karke ya scanner gun se try karo.';return;}
+  try{
+    qr=new Html5Qrcode('reader');
+    await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:160}},onCode,()=>{});
+  }catch(e){$('ovm').textContent='Camera nahi khula. Browser mein camera permission Allow karo (HTTPS link chahiye).';}
+}
+async function closeCam(){
+  $('ov').classList.remove('on');
+  try{if(qr){await qr.stop();qr.clear();}}catch(e){}
+  qr=null;
+}
+function onCode(txt){
+  const now=Date.now();
+  if(txt===lastCode&&now-lastAt<1500){lastAt=now;return;}
+  lastCode=txt;lastAt=now;
+  if(qrMode==='bin'){setBin(txt);closeCam();}
+  else{addSku(txt);$('ovm').textContent='✓ '+norm(txt)+' — agla scan karo';}
+}
+$('binCam').onclick=()=>openCam('bin');
+$('skuCam').onclick=()=>openCam('sku');
+$('ovx').onclick=closeCam;
+
+// ---- data (date-wise, unique BIN+SKU, qty jod kar) ----
+let selDate='';
+const pad=n=>String(n).padStart(2,'0');
+const dkey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+function dates(){return [...new Set(saves.map(s=>dkey(s.ts)))].sort().reverse();}
+function rows(date){
+  const m=new Map();
+  saves.filter(s=>dkey(s.ts)===date).sort((a,b)=>a.ts-b.ts).forEach(s=>(s.items||[]).forEach(i=>{
+    const k=s.bin+'\u0001'+i.sku;
+    if(m.has(k))m.get(k).qty+=i.qty;else m.set(k,{sku:i.sku,qty:i.qty,bin:s.bin});
+  }));
+  return [...m.values()];
+}
+function renderData(){
+  const ds=dates();
+  if(selDate!=='ALL'&&!ds.includes(selDate))selDate=ds[0]||'ALL';
+  const sel=$('dsel');sel.innerHTML='';
+  ds.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d.split('-').reverse().join('-');sel.append(o)});
+  if(ds.length){const o=document.createElement('option');o.value='ALL';o.textContent='Sab dates';sel.append(o)}
+  sel.value=selDate;
+  const list=selDate==='ALL'?ds.flatMap(d=>rows(d).map(r=>({...r,d}))):rows(selDate);
+  const tb=$('tb');tb.innerHTML='';
+  list.forEach((x,i)=>{const tr=document.createElement('tr');
+    [i+1,x.sku,x.qty,x.bin].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});tb.append(tr)});
+  $('empty').classList.toggle('hide',list.length>0);
+  $('sB').textContent=new Set(list.map(x=>(x.d||'')+x.bin)).size;
+  $('sR').textContent=list.length;
+  $('sQ').textContent=list.reduce((a,b)=>a+b.qty,0);
+}
+$('rf').onclick=()=>refresh();
+$('dsel').onchange=e=>{selDate=e.target.value;renderData();};
+function sheet(r){
+  const ws=XLSX.utils.aoa_to_sheet([['S.No','SKU','QTY','BIN'],...r.map((x,i)=>[i+1,x.sku,x.qty,x.bin])]);
+  ws['!cols']=[{wch:6},{wch:24},{wch:8},{wch:14}];return ws;
+}
+function saveBlob(blob,fn){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;
+  document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
+}
+$('dl').onclick=()=>{
+  const ds=dates();if(!ds.length){$('msg2').textContent='Download ke liye data nahi hai.';return;}
+  const wb=XLSX.utils.book_new();let fn;
+  if(selDate==='ALL'){ds.slice().reverse().forEach(d=>XLSX.utils.book_append_sheet(wb,sheet(rows(d)),d));fn='Onshelf_All_Dates.xlsx';}
+  else{XLSX.utils.book_append_sheet(wb,sheet(rows(selDate)),'Sheet1');fn='Onshelf_'+selDate+'.xlsx';}
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  saveBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fn);
+  $('msg2').textContent='Excel download shuru: '+fn;
+};
+$('clr').onclick=async()=>{
+  const tgt=saves.filter(s=>selDate==='ALL'||dkey(s.ts)===selDate);
+  if(!online||!tgt.length)return;
+  if(!confirm((selDate==='ALL'?'Sab dates':selDate)+' ka saved data delete ho jayega. Pehle Excel download kar liya? Pakka clear karein?'))return;
+  try{await api('DELETE','/api/saves',{ids:tgt.map(s=>s.id)});$('msg2').textContent='Data clear ho gaya.';refresh();}
+  catch(e){$('msg2').textContent='Clear nahi hua: '+e.message;}
+};
+
+// ---- load / live refresh ----
+async function refresh(){
+  try{saves=await api('GET','/api/saves');online=true;banner('');renderData();render();}
+  catch(e){if(e.message!=='PIN galat'){online=false;banner('Server se connect nahi ho paya: '+e.message);render();}}
+}
+function startPolling(){clearInterval(poll);poll=setInterval(()=>{if(!document.hidden&&!$('v2').classList.contains('hide'))refresh()},30000);}
+
+// ---- PIN ----
+function showPin(msg){$('pinMsg').textContent=msg||'';$('pinov').classList.add('on');setTimeout(()=>$('pinIn').focus(),50);}
+async function tryPin(){
+  pin=$('pinIn').value.trim();
+  try{
+    saves=await api('GET','/api/saves');
+    ls.set('onshelf-pin',pin);$('pinov').classList.remove('on');$('pinIn').value='';
+    await start();
+  }catch(e){if(e.message!=='PIN galat')$('pinMsg').textContent=e.message;}
+}
+$('pinOk').onclick=tryPin;
+$('pinIn').onkeydown=e=>{if(e.key==='Enter')tryPin()};
+
+// ---- boot ----
+async function start(){
+  online=true;renderData();render();
+  if(!bin&&!items.length){
+    try{const d=await api('GET','/api/draft?dev='+encodeURIComponent(dev));
+      if(d&&d.bin){bin=d.bin;items=(d.items||[]).map(i=>({sku:i.sku,qty:i.qty}));ls.set('onshelf-draft',JSON.stringify({bin,items}));render();}}catch(e){}
+  }
+  startPolling();
+}
+loadDraft();render();
+if(!pin)showPin('');
+else api('GET','/api/saves').then(r=>{saves=r;start();}).catch(e=>{if(e.message!=='PIN galat'){banner('Server se connect nahi ho paya: '+e.message);}});
+</script>
+</body>
+</html>

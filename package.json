@@ -1,0 +1,9 @@
+{
+  "name": "onshelf-tool",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Bin on-shelf scanning tool (mobile scan, computer export)",
+  "dependencies": {
+    "@upstash/redis": "^1.34.0"
+  }
+}
