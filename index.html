@@ -94,7 +94,7 @@ th{color:var(--mut);font-weight:600}
     <div class="card sbar hide" id="sessBar">
       <div class="t">🟡 Aapka Onshelf chalu hai</div>
       <div class="mut" id="sessInfo"></div>
-      <button class="btn g" id="complete" style="width:100%;margin-top:10px;padding:14px;font-size:17px">🏁 Onshelf Complete — Task close + Excel</button>
+      <button class="btn g" id="complete" style="width:100%;margin-top:10px;padding:14px;font-size:17px">🏁 Onshelf Complete — Task close karo</button>
     </div>
     <div class="card hide" id="binCard">
       <h2>Step 1 · Bin select / scan</h2>
@@ -275,14 +275,12 @@ function renderSessBar(){
 $('complete').onclick=async()=>{
   const s=mySession();if(!s||!online)return;
   if(bin||items.length){alert('Abhi BIN '+(bin||'')+' ka scan data save nahi hua. Pehle "Bin Full — Save" karo (ya Bin badlo se hata do), phir Onshelf Complete karo.');return;}
-  if(!confirm('Onshelf complete karein?\n'+s.bins+' bin, '+s.qty+' qty.\nTask close ho jayega aur Excel download hogi. Uske baad naya scan naya onshelf maana jayega.'))return;
+  if(!confirm('Onshelf complete karein?\n'+s.bins+' bin, '+s.qty+' qty.\nTask close ho jayega. Uske baad naya scan naya onshelf maana jayega.'))return;
   $('complete').disabled=true;
   try{
     await api('POST','/api/sessions',{action:'complete',id:s.id});
     await refresh();
-    const done=buildSessions().find(x=>x.id===s.id);
-    if(done)downloadSession(done);
-    say('🏁 Onshelf complete! Excel download ho gayi. Naya scan naya onshelf hoga.','ok');
+    say('🏁 Onshelf complete ho gaya. Excel computer ke Data tab se download karo. Naya scan naya onshelf hoga.','ok');
   }catch(e){say('Complete nahi hua: '+e.message,'err');}
   $('complete').disabled=false;
 };

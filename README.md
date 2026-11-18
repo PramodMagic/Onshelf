@@ -27,7 +27,7 @@ Saved bins Upstash Redis mein rehti hain (refresh/phone change par bhi). Date-wi
 ## Onshelf Session (naya)
 - Mobile par pehli baar **apna naam** daalna hota hai (har banda alag naam). Naam badalne ka button upar hai.
 - Pehli bin save hote hi us user ka **onshelf (session) shuru** ho jata hai. Same naam alag device se bhi same onshelf mein judta hai.
-- Saari bins ho jayein to **🏁 Onshelf Complete** dabao → task close + us onshelf ki Excel download. Uske baad agla scan **naya onshelf** (ek din mein kitne bhi ho sakte hain).
-- Computer ke Data tab mein date chuno → har user ka har onshelf alag dikhta hai, har ek ki apni **⬇ Excel**. “Sabka Excel” se ek file milti hai jisme har onshelf ki alag sheet hai.
+- Saari bins ho jayein to **🏁 Onshelf Complete** dabao → task close (Excel apne aap download nahi hoti). Uske baad agla scan **naya onshelf** (ek din mein kitne bhi ho sakte hain).
+- Computer ke Data tab mein date chuno → har user ka har onshelf alag dikhta hai, har ek ki apni **⬇ Excel** (jab chaho tab download). “Sabka Excel” se ek file milti hai jisme har onshelf ki alag sheet hai.
 - Excel mein 2 sheet: `Onshelf` (S.No, SKU, QTY, BIN) aur `Info` (user, date, start/end, total).
 - Purana data (jo is update se pehle save hua) “Purana data” naam se dikhta hai.
