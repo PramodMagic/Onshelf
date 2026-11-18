@@ -48,6 +48,15 @@ th{color:var(--mut);font-weight:600}
 .pinbox{max-width:360px;width:100%;margin:0 auto;background:var(--card);border-radius:14px;padding:18px}
 .pinbox .btn{width:auto;max-width:none;margin:0;flex:0 0 auto}
 .pinbox input{flex:1 1 auto;width:100%}
+.item .s{cursor:pointer}
+.q .ed{font-size:15px}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;display:none;padding:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+#sheet.on{display:block}
+#sheet .in{max-width:480px;margin:0 auto;background:var(--card);border:2px solid var(--ac);border-radius:16px;padding:16px;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+#sheet h3{margin:0 0 10px;font-size:16px}
+#cfW{min-height:20px;color:var(--err);font-size:14px;margin:6px 0 10px;font-weight:600}
+#sheet .btns{display:flex;gap:10px}
+#sheet .btns .btn{flex:1;padding:15px;font-size:18px}
 .hide{display:none}
 </style>
 </head>
@@ -119,6 +128,18 @@ th{color:var(--mut);font-weight:600}
   <button class="btn" id="ovx">✕ Band karo</button>
 </div>
 
+<div id="sheet">
+  <div class="in">
+    <h3 id="cfT">Scan hua code</h3>
+    <input id="cfIn" autocomplete="off" autocapitalize="characters" style="width:100%">
+    <div id="cfW"></div>
+    <div class="btns">
+      <button class="btn" id="cfNo">✕ Cancel</button>
+      <button class="btn g" id="cfOk">✓ OK</button>
+    </div>
+  </div>
+</div>
+
 <div id="pinov" class="ov">
   <div class="pinbox">
     <h2>PIN daalo</h2>
@@ -188,11 +209,13 @@ function render(){
     const m=document.createElement('button');m.textContent='−';
     const n=document.createElement('span');n.textContent=it.qty;
     const p=document.createElement('button');p.textContent='+';
+    const ed=document.createElement('button');ed.textContent='✏';ed.className='ed';ed.title='Code edit';ed.onclick=()=>openConfirm(it.sku,'edit');
+    s.onclick=()=>openConfirm(it.sku,'edit');
     const x=document.createElement('button');x.textContent='✕';
     m.onclick=()=>{it.qty=Math.max(1,it.qty-1);saveDraft();render()};
     p.onclick=()=>{it.qty++;saveDraft();render()};
     x.onclick=()=>{items=items.filter(i=>i!==it);saveDraft();render()};
-    q.append(m,n,p,x);d.append(s,q);L.append(d);
+    q.append(ed,m,n,p,x);d.append(s,q);L.append(d);
   });
 }
 
@@ -207,8 +230,54 @@ function addSku(v){
 }
 $('binOk').onclick=()=>setBin($('binIn').value);
 $('binIn').onkeydown=e=>{if(e.key==='Enter')setBin(e.target.value)};
-$('skuOk').onclick=()=>{addSku($('skuIn').value);$('skuIn').value='';$('skuIn').focus()};
-$('skuIn').onkeydown=e=>{if(e.key==='Enter'){addSku(e.target.value);e.target.value='';}};
+function submitSku(){
+  const v=norm($('skuIn').value);if(!v)return;
+  $('skuIn').value='';
+  openConfirm(v,'add',()=>{$('skuIn').focus()});
+}
+$('skuOk').onclick=submitSku;
+$('skuIn').onkeydown=e=>{if(e.key==='Enter')submitSku();};
+
+// ---- beep + confirm (har scan par OK) ----
+let actx=null;
+function unlockAudio(){try{actx=actx||new(window.AudioContext||window.webkitAudioContext)();if(actx.state==='suspended')actx.resume();}catch(e){}}
+document.addEventListener('pointerdown',unlockAudio);
+function beep(){
+  try{unlockAudio();if(actx){const o=actx.createOscillator(),g=actx.createGain();o.type='square';o.frequency.value=1000;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.18);}}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate(80)}catch(e){}
+}
+let cf=null;
+function openConfirm(code,mode,done){
+  cf={mode,orig:norm(code),done};
+  if(mode==='add')beep();
+  $('cfT').textContent=mode==='edit'?'Code edit karo':'Scan hua code — check karke OK karo';
+  $('cfIn').value=norm(code);
+  cfWarn();
+  $('sheet').classList.add('on');
+  setTimeout(()=>$('cfOk').focus(),30);
+}
+function cfWarn(){
+  if(!cf)return;
+  const v=norm($('cfIn').value);
+  const f=items.find(i=>i.sku===v&&!(cf.mode==='edit'&&v===cf.orig));
+  $('cfW').textContent=f?'⚠ Ye code pehle se list mein hai (qty '+f.qty+'). '+(cf.mode==='edit'?'Dono merge ho jayenge.':'OK karne par qty +1 hogi.'):'';
+}
+function renameSku(old,nw){
+  const it=items.find(i=>i.sku===old);if(!it||old===nw)return;
+  const other=items.find(i=>i.sku===nw);
+  if(other){other.qty+=it.qty;items=items.filter(i=>i!==it);}else it.sku=nw;
+  saveDraft();render();say('✓ Code badal gaya: '+nw,'ok');
+}
+function cfClose(ok){
+  if(!cf)return;
+  const c=cf;cf=null;$('sheet').classList.remove('on');
+  if(ok){const v=norm($('cfIn').value);if(v){if(c.mode==='add')addSku(v);else renameSku(c.orig,v);}}
+  if(c.done)c.done(ok);
+}
+$('cfOk').onclick=()=>cfClose(true);
+$('cfNo').onclick=()=>cfClose(false);
+$('cfIn').oninput=cfWarn;
+$('cfIn').onkeydown=e=>{if(e.key==='Enter')cfClose(true);if(e.key==='Escape')cfClose(false);};
 $('binChg').onclick=()=>{if(items.length&&!confirm('Scan kiya hua data hat jayega. Bin badlein?'))return;bin='';items=[];saveDraft();render();};
 
 // ---- save ----
@@ -225,24 +294,32 @@ $('save').onclick=async()=>{
 
 // ---- camera ----
 async function openCam(mode){
-  qrMode=mode;$('ov').classList.add('on');$('ovm').textContent='Barcode ko frame ke andar rakho';
+  unlockAudio();qrMode=mode;camBusy=false;blockCode='';miss=0;$('ov').classList.add('on');$('ovm').textContent='Barcode ko frame ke andar rakho';
   if(typeof Html5Qrcode==='undefined'){$('ovm').textContent='Scanner load nahi hua. Type karke ya scanner gun se try karo.';return;}
   try{
     qr=new Html5Qrcode('reader');
-    await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:160}},onCode,()=>{});
+    await qr.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:160}},onCode,onMiss);
   }catch(e){$('ovm').textContent='Camera nahi khula. Browser mein camera permission Allow karo (HTTPS link chahiye).';}
 }
 async function closeCam(){
   $('ov').classList.remove('on');
   try{if(qr){await qr.stop();qr.clear();}}catch(e){}
-  qr=null;
+  qr=null;camBusy=false;blockCode='';miss=0;
 }
+let camBusy=false,blockCode='',miss=0;
+function onMiss(){if(blockCode&&++miss>6){blockCode='';miss=0;}}
 function onCode(txt){
-  const now=Date.now();
-  if(txt===lastCode&&now-lastAt<1500){lastAt=now;return;}
-  lastCode=txt;lastAt=now;
-  if(qrMode==='bin'){setBin(txt);closeCam();}
-  else{addSku(txt);$('ovm').textContent='✓ '+norm(txt)+' — agla scan karo';}
+  if(camBusy)return;
+  if(txt===blockCode){miss=0;return;}
+  camBusy=true;
+  if(qrMode==='bin'){beep();setBin(txt);closeCam();return;}
+  try{qr.pause(true)}catch(e){}
+  $('ovm').textContent='Code mil gaya — OK ya Cancel dabao';
+  openConfirm(txt,'add',()=>{
+    blockCode=txt;miss=0;camBusy=false;
+    $('ovm').textContent='Agla product dikhao (pehle camera is code se hatao)';
+    try{if(qr)qr.resume()}catch(e){}
+  });
 }
 $('binCam').onclick=()=>openCam('bin');
 $('skuCam').onclick=()=>openCam('sku');
