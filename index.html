@@ -82,7 +82,7 @@ th{color:var(--mut);font-weight:600}
     <div class="card hide" id="nameCard">
       <h2>Pehle apna naam daalo</h2>
       <div class="row">
-        <input id="nameIn" placeholder="Jaise: Ramesh" autocomplete="off">
+        <input id="nameIn" name="o_user_nm" placeholder="Jaise: Ramesh" autocomplete="off">
         <button class="btn p" id="nameOk">OK</button>
       </div>
       <div class="mut" style="margin-top:8px">Isi naam se aapka onshelf alag Excel mein aayega. Har banda apna alag naam rakhe.</div>
@@ -99,7 +99,7 @@ th{color:var(--mut);font-weight:600}
     <div class="card hide" id="binCard">
       <h2>Step 1 · Bin select / scan</h2>
       <div class="row">
-        <input id="binIn" placeholder="Bin number scan ya type karo" autocomplete="off" autocapitalize="characters">
+        <input id="binIn" name="o_bin_no" value="" placeholder="Bin number scan ya type karo" autocomplete="off" autocapitalize="characters">
         <button class="btn p" id="binOk">OK</button>
       </div>
       <div class="row" style="margin-top:8px"><button class="btn" id="binCam" style="width:100%">📷 Camera se bin scan karo</button></div>
@@ -216,7 +216,7 @@ async function pushDraft(){
   try{await api('POST','/api/draft',{dev,bin,items});}catch(e){}
   dBusy=false;
 }
-function loadDraft(){try{const d=JSON.parse(ls.get('onshelf-draft')||'null');if(d){bin=d.bin||'';items=d.items||[]}}catch(e){}}
+function loadDraft(){try{const d=JSON.parse(ls.get('onshelf-draft')||'null');if(d&&d.items&&d.items.length){bin=d.bin||'';items=d.items}}catch(e){}}
 
 // ---- UI helpers ----
 function say(t,c){const m=$('msg');m.textContent=t;m.className='msg '+(c||'');}
@@ -256,12 +256,12 @@ function render(){
 }
 
 // ---- user naam ----
-function setName(v){v=String(v||'').trim().replace(/\s+/g,' ').slice(0,40);if(!v)return;uname=v;ls.set('onshelf-user',v);$('nameIn').value='';render();}
+function setName(v){v=String(v||'').trim().replace(/\s+/g,' ').slice(0,40);if(!v)return;uname=v;ls.set('onshelf-user',v);$('nameIn').value='';bin='';items=[];saveDraft();say('');render();}
 $('nameOk').onclick=()=>setName($('nameIn').value);
-$('nameIn').onkeydown=e=>{if(e.key==='Enter')setName(e.target.value)};
+$('nameIn').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();setName(e.target.value);}};
 $('uChg').onclick=()=>{
   if(items.length&&!confirm('Abhi ki bin ka scan data pending hai. Naam badalne se ye bin doosre naam se save hogi. Pakka naam badlein?'))return;
-  uname='';ls.set('onshelf-user','');render();
+  uname='';ls.set('onshelf-user','');bin='';items=[];saveDraft();render();
 };
 
 // ---- onshelf session (task) ----
@@ -544,7 +544,7 @@ async function start(){
   online=true;renderData();render();
   if(!bin&&!items.length){
     try{const d=await api('GET','/api/draft?dev='+encodeURIComponent(dev));
-      if(d&&d.bin){bin=d.bin;items=(d.items||[]).map(i=>({sku:i.sku,qty:i.qty}));ls.set('onshelf-draft',JSON.stringify({bin,items}));render();}}catch(e){}
+      if(d&&d.bin&&d.items&&d.items.length){bin=d.bin;items=(d.items||[]).map(i=>({sku:i.sku,qty:i.qty}));ls.set('onshelf-draft',JSON.stringify({bin,items}));render();}}catch(e){}
   }
   startPolling();
 }
