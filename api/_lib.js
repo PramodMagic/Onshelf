@@ -6,6 +6,11 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN,
 });
 
+// Redis keys
+const SAVES = 'onshelf:saves';       // har saved bin
+const SESS = 'onshelf:sessions';     // har onshelf task (session)
+const OPEN = 'onshelf:open:';        // user ka abhi chalu session -> OPEN + userKey
+
 function auth(req, res) {
   const pin = process.env.APP_PIN;
   if (!pin) {
@@ -19,4 +24,8 @@ function auth(req, res) {
   return true;
 }
 
-module.exports = { redis, auth };
+const parse = (v) => (typeof v === 'string' ? JSON.parse(v) : v);
+// "  Ramesh   Kumar " -> "ramesh kumar" (same banda alag device se bhi same session mein aaye)
+const userKey = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+module.exports = { redis, auth, SAVES, SESS, OPEN, parse, userKey };

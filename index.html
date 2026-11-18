@@ -58,6 +58,16 @@ th{color:var(--mut);font-weight:600}
 #sheet .btns{display:flex;gap:10px}
 #sheet .btns .btn{flex:1;padding:15px;font-size:18px}
 .hide{display:none}
+.ubar{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}
+.ubar b{font-size:17px}
+.sbar{border:2px solid var(--ok)}
+.sbar .t{font-weight:700;margin-bottom:2px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:700;border:1px solid var(--bd)}
+.pill.open{color:#b45309;border-color:#b45309}.pill.done{color:var(--ok);border-color:var(--ok)}
+.sess{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--bd)}
+.sess:first-child{border-top:0}
+.sess .i{flex:1;min-width:0}.sess .i b{font-size:16px}
+.sess .btn{padding:9px 12px;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -69,7 +79,24 @@ th{color:var(--mut);font-weight:600}
   <div id="ban" class="ban hide"></div>
 
   <div id="v1">
-    <div class="card" id="binCard">
+    <div class="card hide" id="nameCard">
+      <h2>Pehle apna naam daalo</h2>
+      <div class="row">
+        <input id="nameIn" placeholder="Jaise: Ramesh" autocomplete="off">
+        <button class="btn p" id="nameOk">OK</button>
+      </div>
+      <div class="mut" style="margin-top:8px">Isi naam se aapka onshelf alag Excel mein aayega. Har banda apna alag naam rakhe.</div>
+    </div>
+    <div class="ubar hide" id="uBar">
+      <div>👤 <b id="uName"></b></div>
+      <button class="btn" id="uChg">Naam badlo</button>
+    </div>
+    <div class="card sbar hide" id="sessBar">
+      <div class="t">🟡 Aapka Onshelf chalu hai</div>
+      <div class="mut" id="sessInfo"></div>
+      <button class="btn g" id="complete" style="width:100%;margin-top:10px;padding:14px;font-size:17px">🏁 Onshelf Complete — Task close + Excel</button>
+    </div>
+    <div class="card hide" id="binCard">
       <h2>Step 1 · Bin select / scan</h2>
       <div class="row">
         <input id="binIn" placeholder="Bin number scan ya type karo" autocomplete="off" autocapitalize="characters">
@@ -109,14 +136,18 @@ th{color:var(--mut);font-weight:600}
       </div>
       <div class="row" style="margin-bottom:8px"><select id="dsel"></select><button class="btn" id="rf" title="Refresh">🔄</button></div>
       <div class="row" style="flex-wrap:wrap">
-        <button class="btn p" id="dl" style="flex:1">⬇ Excel download</button>
+        <button class="btn p" id="dl" style="flex:1">⬇ Sabka Excel (user-wise sheets)</button>
         <button class="btn" id="clr">🗑 Is date ka data clear</button>
       </div>
-      <div class="mut" style="margin-top:8px">Ek date chuno to us din ki alag Excel file banegi. “Sab dates” chuno to ek file mein har date ki alag sheet banegi.</div>
+      <div class="mut" style="margin-top:8px">Neeche har user ke har onshelf ki alag Excel file hai. Upar wala button ek file deta hai jisme har onshelf (user + session) ki alag sheet hoti hai.</div>
       <div class="msg" id="msg2"></div>
     </div>
+    <div class="card" id="sessCard">
+      <h2>Onshelf sessions (user-wise)</h2>
+      <div id="sessList"></div>
+    </div>
     <div class="card tw">
-      <table><thead><tr><th>S.No</th><th>SKU</th><th>QTY</th><th>BIN</th></tr></thead><tbody id="tb"></tbody></table>
+      <table><thead><tr><th>S.No</th><th>SKU</th><th>QTY</th><th>BIN</th><th>User</th><th>Onshelf</th></tr></thead><tbody id="tb"></tbody></table>
       <div id="empty" class="mut" style="padding:10px 0">Abhi tak koi saved data nahi hai.</div>
     </div>
   </div>
@@ -153,13 +184,15 @@ th{color:var(--mut);font-weight:600}
 <script>
 const $=id=>document.getElementById(id);
 const norm=s=>String(s||'').trim().toUpperCase();
-let bin='',items=[],saves=[],online=false,qr=null,qrMode='',lastCode='',lastAt=0,pin='',poll=null;
+let bin='',items=[],saves=[],srv=[],online=false,qr=null,qrMode='',lastCode='',lastAt=0,pin='',poll=null;
 
 // ---- storage helpers ----
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
 let dev=ls.get('onshelf-dev');
 if(!dev){dev=Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,10);ls.set('onshelf-dev',dev);}
 pin=ls.get('onshelf-pin')||'';
+let uname=ls.get('onshelf-user')||'';
+const ukey=n=>String(n||'').trim().toLowerCase().replace(/\s+/g,' ');
 
 // ---- API ----
 async function api(method,url,body){
@@ -194,8 +227,11 @@ function banner(t){const b=$('ban');if(t){b.textContent=t;b.classList.remove('hi
 
 function render(){
   const has=!!bin;
-  $('binCard').classList.toggle('hide',has);
-  $('work').classList.toggle('hide',!has);
+  $('nameCard').classList.toggle('hide',!!uname);
+  $('uBar').classList.toggle('hide',!uname);$('uName').textContent=uname;
+  $('binCard').classList.toggle('hide',has||!uname);
+  $('work').classList.toggle('hide',!has||!uname);
+  renderSessBar();
   $('binName').textContent=bin;
   $('cnt').textContent=items.length;
   $('tq').textContent=items.reduce((a,b)=>a+b.qty,0);
@@ -218,6 +254,38 @@ function render(){
     q.append(ed,m,n,p,x);d.append(s,q);L.append(d);
   });
 }
+
+// ---- user naam ----
+function setName(v){v=String(v||'').trim().replace(/\s+/g,' ').slice(0,40);if(!v)return;uname=v;ls.set('onshelf-user',v);$('nameIn').value='';render();}
+$('nameOk').onclick=()=>setName($('nameIn').value);
+$('nameIn').onkeydown=e=>{if(e.key==='Enter')setName(e.target.value)};
+$('uChg').onclick=()=>{
+  if(items.length&&!confirm('Abhi ki bin ka scan data pending hai. Naam badalne se ye bin doosre naam se save hogi. Pakka naam badlein?'))return;
+  uname='';ls.set('onshelf-user','');render();
+};
+
+// ---- onshelf session (task) ----
+function mySession(){const k=ukey(uname);return k?buildSessions().find(x=>x.uk===k&&x.status==='open'):null;}
+function hm(ts){const d=new Date(ts);return pad(d.getHours())+':'+pad(d.getMinutes());}
+function renderSessBar(){
+  const s=uname?mySession():null;
+  $('sessBar').classList.toggle('hide',!s);
+  if(s)$('sessInfo').textContent=s.bins+' bin save · '+s.qty+' qty · shuru '+hm(s.ts)+' (jab saari bins ho jayein tab Complete dabao)';
+}
+$('complete').onclick=async()=>{
+  const s=mySession();if(!s||!online)return;
+  if(bin||items.length){alert('Abhi BIN '+(bin||'')+' ka scan data save nahi hua. Pehle "Bin Full — Save" karo (ya Bin badlo se hata do), phir Onshelf Complete karo.');return;}
+  if(!confirm('Onshelf complete karein?\n'+s.bins+' bin, '+s.qty+' qty.\nTask close ho jayega aur Excel download hogi. Uske baad naya scan naya onshelf maana jayega.'))return;
+  $('complete').disabled=true;
+  try{
+    await api('POST','/api/sessions',{action:'complete',id:s.id});
+    await refresh();
+    const done=buildSessions().find(x=>x.id===s.id);
+    if(done)downloadSession(done);
+    say('🏁 Onshelf complete! Excel download ho gayi. Naya scan naya onshelf hoga.','ok');
+  }catch(e){say('Complete nahi hua: '+e.message,'err');}
+  $('complete').disabled=false;
+};
 
 // ---- bin & sku ----
 function setBin(v){v=norm(v);if(!v)return;bin=v;$('binIn').value='';saveDraft();render();say('');setTimeout(()=>$('skuIn').focus(),50);}
@@ -283,12 +351,13 @@ $('binChg').onclick=()=>{if(items.length&&!confirm('Scan kiya hua data hat jayeg
 // ---- save ----
 $('save').onclick=async()=>{
   if(!online||!items.length)return;
+  if(!uname){render();return;}
   if(!confirm('BIN '+bin+' ka data save karein? ('+items.length+' SKU)'))return;
   $('save').disabled=true;
   try{
-    await api('POST','/api/saves',{bin,items:items.map(i=>({sku:i.sku,qty:i.qty})),by:dev});
-    const b=bin;bin='';items=[];saveDraft();render();say('✅ BIN '+b+' save ho gayi. Agli bin scan karo.','ok');
-    refresh();
+    await api('POST','/api/saves',{bin,user:uname,items:items.map(i=>({sku:i.sku,qty:i.qty})),by:dev});
+    const b=bin;bin='';items=[];saveDraft();say('✅ BIN '+b+' save ho gayi. Agli bin scan karo ya Onshelf Complete karo.','ok');
+    await refresh();render();
   }catch(e){say('Save nahi hua: '+e.message,'err');render();}
 };
 
@@ -325,19 +394,43 @@ $('binCam').onclick=()=>openCam('bin');
 $('skuCam').onclick=()=>openCam('sku');
 $('ovx').onclick=closeCam;
 
-// ---- data (date-wise, unique BIN+SKU, qty jod kar) ----
+// ---- data (date-wise -> user-wise onshelf sessions) ----
 let selDate='';
 const pad=n=>String(n).padStart(2,'0');
 const dkey=ts=>{const d=new Date(ts);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
-function dates(){return [...new Set(saves.map(s=>dkey(s.ts)))].sort().reverse();}
-function rows(date){
+const safe=t=>String(t||'').replace(/[^A-Za-z0-9ऀ-ॿ]+/g,'_').replace(/^_+|_+$/g,'')||'user';
+
+// saves + server sessions -> har onshelf session ek object
+function buildSessions(){
   const m=new Map();
-  saves.filter(s=>dkey(s.ts)===date).sort((a,b)=>a.ts-b.ts).forEach(s=>(s.items||[]).forEach(i=>{
-    const k=s.bin+'\u0001'+i.sku;
-    if(m.has(k))m.get(k).qty+=i.qty;else m.set(k,{sku:i.sku,qty:i.qty,bin:s.bin});
-  }));
-  return [...m.values()];
+  srv.forEach(x=>m.set(x.id,{...x,saves:[]}));
+  saves.forEach(sv=>{
+    const id=sv.sid||('legacy-'+dkey(sv.ts));
+    if(!m.has(id))m.set(id,{id,user:sv.user||'Purana data',uk:'legacy',ts:sv.ts,end:null,status:'closed',legacy:true,saves:[]});
+    m.get(id).saves.push(sv);
+  });
+  const list=[...m.values()].filter(x=>x.saves.length);
+  list.forEach(x=>{
+    if(x.legacy)x.ts=Math.min(...x.saves.map(v=>v.ts));
+    x.date=dkey(x.ts);
+    const mm=new Map();
+    x.saves.slice().sort((a,b)=>a.ts-b.ts).forEach(sv=>(sv.items||[]).forEach(i=>{
+      const k=sv.bin+'\u0001'+i.sku;
+      if(mm.has(k))mm.get(k).qty+=i.qty;else mm.set(k,{sku:i.sku,qty:i.qty,bin:sv.bin});
+    }));
+    x.rows=[...mm.values()];
+    x.bins=new Set(x.saves.map(v=>v.bin)).size;
+    x.qty=x.rows.reduce((a,b)=>a+b.qty,0);
+  });
+  // same user + same date ke sessions ko 1,2,3 number do
+  const cnt={};
+  list.sort((a,b)=>a.ts-b.ts).forEach(x=>{const k=x.date+'|'+x.uk;cnt[k]=(cnt[k]||0)+1;x.n=cnt[k];});
+  return list;
 }
+const dates=()=>[...new Set(buildSessions().map(s=>s.date))].sort().reverse();
+const sessOf=date=>buildSessions().filter(s=>date==='ALL'||s.date===date).sort((a,b)=>a.date===b.date?(a.uk===b.uk?a.ts-b.ts:a.user.localeCompare(b.user)):(a.date<b.date?1:-1));
+const label=s=>s.legacy?'Purana data':s.user+' · Onshelf '+s.n;
+
 function renderData(){
   const ds=dates();
   if(selDate!=='ALL'&&!ds.includes(selDate))selDate=ds[0]||'ALL';
@@ -345,45 +438,90 @@ function renderData(){
   ds.forEach(d=>{const o=document.createElement('option');o.value=d;o.textContent=d.split('-').reverse().join('-');sel.append(o)});
   if(ds.length){const o=document.createElement('option');o.value='ALL';o.textContent='Sab dates';sel.append(o)}
   sel.value=selDate;
-  const list=selDate==='ALL'?ds.flatMap(d=>rows(d).map(r=>({...r,d}))):rows(selDate);
+  const ss=sessOf(selDate);
+  // sessions list
+  const SL=$('sessList');SL.innerHTML='';
+  ss.forEach(s=>{
+    const d=document.createElement('div');d.className='sess';
+    const i=document.createElement('div');i.className='i';
+    const t=document.createElement('b');t.textContent=(selDate==='ALL'?s.date.split('-').reverse().join('-')+' · ':'')+label(s);
+    const pl=document.createElement('span');pl.className='pill '+(s.status==='open'?'open':'done');pl.style.marginLeft='8px';pl.textContent=s.status==='open'?'🟡 Chalu':'✅ Complete';
+    const sub=document.createElement('div');sub.className='mut';
+    sub.textContent=s.bins+' bin · '+s.rows.length+' rows · '+s.qty+' qty · '+hm(s.ts)+(s.end?' – '+hm(s.end):'')+(s.legacy?'':'');
+    i.append(t,pl,sub);
+    const bt=document.createElement('button');bt.className='btn p';bt.textContent='⬇ Excel';bt.onclick=()=>downloadSession(s);
+    d.append(i,bt);SL.append(d);
+  });
+  if(!ss.length)SL.innerHTML='<div class="mut">Abhi tak koi onshelf nahi hua.</div>';
+  // table
+  const list=ss.flatMap(s=>s.rows.map(r=>({...r,s})));
   const tb=$('tb');tb.innerHTML='';
   list.forEach((x,i)=>{const tr=document.createElement('tr');
-    [i+1,x.sku,x.qty,x.bin].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});tb.append(tr)});
+    [i+1,x.sku,x.qty,x.bin,x.s.legacy?'—':x.s.user,x.s.legacy?'Purana':(selDate==='ALL'?x.s.date.slice(5)+' #':'#')+x.s.n].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});tb.append(tr)});
   $('empty').classList.toggle('hide',list.length>0);
-  $('sB').textContent=new Set(list.map(x=>(x.d||'')+x.bin)).size;
+  $('sB').textContent=ss.reduce((a,s)=>a+s.bins,0);
   $('sR').textContent=list.length;
   $('sQ').textContent=list.reduce((a,b)=>a+b.qty,0);
 }
 $('rf').onclick=()=>refresh();
 $('dsel').onchange=e=>{selDate=e.target.value;renderData();};
+
 function sheet(r){
   const ws=XLSX.utils.aoa_to_sheet([['S.No','SKU','QTY','BIN'],...r.map((x,i)=>[i+1,x.sku,x.qty,x.bin])]);
   ws['!cols']=[{wch:6},{wch:24},{wch:8},{wch:14}];return ws;
+}
+function infoSheet(s){
+  const ws=XLSX.utils.aoa_to_sheet([
+    ['User',s.legacy?'—':s.user],['Date',s.date],['Onshelf no. (us din)',s.legacy?'—':s.n],
+    ['Start',hm(s.ts)],['End',s.end?hm(s.end):'(abhi chalu)'],['Status',s.status==='open'?'Chalu':'Complete'],
+    ['Total BIN',s.bins],['Total rows',s.rows.length],['Total QTY',s.qty]]);
+  ws['!cols']=[{wch:22},{wch:20}];return ws;
+}
+function sheetName(wb,t){
+  let n=t.replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31).trim()||'Sheet',k=2,base=n;
+  while(wb.SheetNames.includes(n)){const x='_'+k++;n=base.slice(0,31-x.length)+x;}
+  return n;
 }
 function saveBlob(blob,fn){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;
   document.body.append(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
 }
-$('dl').onclick=()=>{
-  const ds=dates();if(!ds.length){$('msg2').textContent='Download ke liye data nahi hai.';return;}
-  const wb=XLSX.utils.book_new();let fn;
-  if(selDate==='ALL'){ds.slice().reverse().forEach(d=>XLSX.utils.book_append_sheet(wb,sheet(rows(d)),d));fn='Onshelf_All_Dates.xlsx';}
-  else{XLSX.utils.book_append_sheet(wb,sheet(rows(selDate)),'Sheet1');fn='Onshelf_'+selDate+'.xlsx';}
+function writeWb(wb,fn){
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   saveBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),fn);
+}
+// ek onshelf = ek Excel
+function downloadSession(s){
+  if(typeof XLSX==='undefined'){say('Excel library load nahi hui. Internet check karo.','err');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,sheet(s.rows),'Onshelf');
+  XLSX.utils.book_append_sheet(wb,infoSheet(s),'Info');
+  const fn='Onshelf_'+s.date+'_'+(s.legacy?'Purana':safe(s.user)+'_'+s.n)+'.xlsx';
+  writeWb(wb,fn);
   $('msg2').textContent='Excel download shuru: '+fn;
+}
+// sab sessions ek file mein, har session ki alag sheet
+$('dl').onclick=()=>{
+  const ss=sessOf(selDate);if(!ss.length){$('msg2').textContent='Download ke liye data nahi hai.';return;}
+  const wb=XLSX.utils.book_new();
+  ss.forEach(s=>XLSX.utils.book_append_sheet(wb,sheet(s.rows),sheetName(wb,(selDate==='ALL'?s.date.slice(5)+' ':'')+(s.legacy?'Purana':s.user+' '+s.n))));
+  const fn=selDate==='ALL'?'Onshelf_All_Dates.xlsx':'Onshelf_'+selDate+'_AllUsers.xlsx';
+  writeWb(wb,fn);$('msg2').textContent='Excel download shuru: '+fn;
 };
 $('clr').onclick=async()=>{
-  const tgt=saves.filter(s=>selDate==='ALL'||dkey(s.ts)===selDate);
-  if(!online||!tgt.length)return;
-  if(!confirm((selDate==='ALL'?'Sab dates':selDate)+' ka saved data delete ho jayega. Pehle Excel download kar liya? Pakka clear karein?'))return;
-  try{await api('DELETE','/api/saves',{ids:tgt.map(s=>s.id)});$('msg2').textContent='Data clear ho gaya.';refresh();}
+  const ss=sessOf(selDate);
+  if(!online||!ss.length)return;
+  const open=ss.filter(s=>s.status==='open').length;
+  if(!confirm((selDate==='ALL'?'Sab dates':selDate)+' ka saved data delete ho jayega'+(open?' ('+open+' chalu onshelf bhi)':'')+'. Pehle Excel download kar liya? Pakka clear karein?'))return;
+  try{
+    await api('DELETE','/api/saves',{ids:ss.flatMap(s=>s.saves.map(v=>v.id)),sids:ss.filter(s=>!s.legacy).map(s=>s.id)});
+    $('msg2').textContent='Data clear ho gaya.';refresh();}
   catch(e){$('msg2').textContent='Clear nahi hua: '+e.message;}
 };
 
 // ---- load / live refresh ----
 async function refresh(){
-  try{saves=await api('GET','/api/saves');online=true;banner('');renderData();render();}
+  try{const r=await api('GET','/api/saves');saves=r.saves||[];srv=r.sessions||[];online=true;banner('');renderData();render();}
   catch(e){if(e.message!=='PIN galat'){online=false;banner('Server se connect nahi ho paya: '+e.message);render();}}
 }
 function startPolling(){clearInterval(poll);poll=setInterval(()=>{if(!document.hidden&&!$('v2').classList.contains('hide'))refresh()},30000);}
@@ -393,7 +531,7 @@ function showPin(msg){$('pinMsg').textContent=msg||'';$('pinov').classList.add('
 async function tryPin(){
   pin=$('pinIn').value.trim();
   try{
-    saves=await api('GET','/api/saves');
+    {const r=await api('GET','/api/saves');saves=r.saves||[];srv=r.sessions||[];}
     ls.set('onshelf-pin',pin);$('pinov').classList.remove('on');$('pinIn').value='';
     await start();
   }catch(e){if(e.message!=='PIN galat')$('pinMsg').textContent=e.message;}
@@ -412,7 +550,7 @@ async function start(){
 }
 loadDraft();render();
 if(!pin)showPin('');
-else api('GET','/api/saves').then(r=>{saves=r;start();}).catch(e=>{if(e.message!=='PIN galat'){banner('Server se connect nahi ho paya: '+e.message);}});
+else api('GET','/api/saves').then(r=>{saves=r.saves||[];srv=r.sessions||[];start();}).catch(e=>{if(e.message!=='PIN galat'){banner('Server se connect nahi ho paya: '+e.message);}});
 </script>
 </body>
 </html>
