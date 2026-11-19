@@ -17,7 +17,7 @@ async function openSession(user) {
       return id;
     }
   }
-  throw new Error('session nahi ban paya, dobara try karo');
+  throw new Error('session_create_failed');
 }
 
 module.exports = async (req, res) => {
@@ -43,8 +43,8 @@ module.exports = async (req, res) => {
             }))
             .filter((i) => i.sku)
         : [];
-      if (!user) return res.status(400).json({ error: 'user ka naam missing hai' });
-      if (!bin || !items.length) return res.status(400).json({ error: 'bin ya items missing hain' });
+      if (!user) return res.status(400).json({ error: 'user_missing' });
+      if (!bin || !items.length) return res.status(400).json({ error: 'bin_or_items_missing' });
       const sid = await openSession(user);
       const id = 's' + Date.now() + Math.random().toString(36).slice(2, 6);
       await redis.hset(SAVES, {

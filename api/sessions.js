@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
     const id = String(b.id || '');
     if (b.action !== 'complete' || !id) return res.status(400).json({ error: 'bad_request' });
     const raw = await redis.hget(SESS, id);
-    if (!raw) return res.status(404).json({ error: 'Ye onshelf session mila nahi (shayad clear ho gaya)' });
+    if (!raw) return res.status(404).json({ error: 'session_not_found' });
     const s = parse(raw);
     if (s.status !== 'closed') {
       s.status = 'closed';

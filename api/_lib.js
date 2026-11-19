@@ -14,7 +14,7 @@ const OPEN = 'onshelf:open:';        // user ka abhi chalu session -> OPEN + use
 function auth(req, res) {
   const pin = process.env.APP_PIN;
   if (!pin) {
-    res.status(500).json({ error: 'APP_PIN set nahi hai (Vercel Environment Variables mein add karo)' });
+    res.status(500).json({ error: 'app_pin_missing' });
     return false;
   }
   if (req.headers['x-pin'] !== pin) {

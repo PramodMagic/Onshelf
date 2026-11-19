@@ -1,6 +1,6 @@
 # Onshelf Bin Tool
 
-Mobile se bin + product scan, computer par data, date-wise Excel export.
+Mobile se bin + product scan, computer par data, user-wise Excel export. App English aur हिन्दी dono mein hai (upar right mein language button).
 
 ## Files
 - `index.html` — poora app (mobile + computer)
