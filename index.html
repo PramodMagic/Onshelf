@@ -71,6 +71,8 @@ th{color:var(--mut);font-weight:600}
 .sess:first-child{border-top:0}
 .sess .i{flex:1;min-width:0}.sess .i b{font-size:16px}
 .sess .btn{padding:9px 12px;white-space:nowrap}
+.sess .acts{display:flex;gap:8px;align-items:center}
+.btn.d{color:var(--err);border-color:var(--err)}
 </style>
 </head>
 <body>
@@ -225,7 +227,7 @@ code_found:'Code found — press OK or Cancel',next_prod:'Show the next product 
 old_data:'Old data',old_short:'Old',s_open:'🟡 Running',s_done:'✅ Completed',sess_sub:'{b} bin · {r} rows · {q} qty · {t}',
 all_dates:'All dates',no_lib:'Excel library did not load. Check the internet.',no_dl:'No data to download.',dl_start:'Excel download started: {f}',
 c_clear:'Data for {d} will be deleted{o}. Did you download the Excel first? Clear it?',c_open:' (including {n} running onshelf)',
-cleared:'Data cleared.',clear_fail:'Could not clear: {e}',conn_fail:'Could not connect to the server: {e}',pin_wrong:'Wrong PIN',
+cleared:'Data cleared.',del_t:'Delete only this onshelf',c_del:'Delete only this onshelf?\n{l}\n{b} bin(s), {q} qty.\nThis cannot be undone. Download its Excel first if you need it.',c_del_open:'\nThis onshelf is still running.',del_ok:'That onshelf was deleted.',del_fail:'Could not delete: {e}',clear_fail:'Could not clear: {e}',conn_fail:'Could not connect to the server: {e}',pin_wrong:'Wrong PIN',
 err_app_pin_missing:'APP_PIN is not set (add it in Vercel Environment Variables)',err_user_missing:'User name is missing',
 err_bin_or_items_missing:'Bin or items are missing',err_session_not_found:'This onshelf session was not found (it may have been cleared)',
 err_session_create_failed:'Could not create the session, please try again',err_bad_request:'Bad request'},
@@ -253,7 +255,7 @@ code_found:'कोड मिल गया — OK या रद्द करे�
 old_data:'पुराना डेटा',old_short:'पुराना',s_open:'🟡 चालू',s_done:'✅ पूरा',sess_sub:'{b} बिन · {r} रो · {q} qty · {t}',
 all_dates:'सभी तारीखें',no_lib:'Excel लाइब्रेरी लोड नहीं हुई। इंटरनेट जांचें।',no_dl:'डाउनलोड के लिए डेटा नहीं है।',dl_start:'Excel डाउनलोड शुरू: {f}',
 c_clear:'{d} का सेव किया हुआ डेटा हट जाएगा{o}। क्या आपने पहले Excel डाउनलोड कर ली? पक्का हटाएं?',c_open:' ({n} चालू ऑनशेल्फ भी)',
-cleared:'डेटा हट गया।',clear_fail:'हटाया नहीं जा सका: {e}',conn_fail:'सर्वर से कनेक्ट नहीं हो पाया: {e}',pin_wrong:'PIN गलत है',
+cleared:'डेटा हट गया।',del_t:'सिर्फ यह ऑनशेल्फ हटाएं',c_del:'सिर्फ यह ऑनशेल्फ हटाएं?\n{l}\n{b} बिन, {q} qty।\nयह वापस नहीं आएगा। ज़रूरत हो तो पहले इसकी Excel डाउनलोड कर लें।',c_del_open:'\nयह ऑनशेल्फ अभी चालू है।',del_ok:'वह ऑनशेल्फ हट गया।',del_fail:'हटाया नहीं जा सका: {e}',clear_fail:'हटाया नहीं जा सका: {e}',conn_fail:'सर्वर से कनेक्ट नहीं हो पाया: {e}',pin_wrong:'PIN गलत है',
 err_app_pin_missing:'APP_PIN सेट नहीं है (Vercel Environment Variables में जोड़ें)',err_user_missing:'यूज़र का नाम नहीं है',
 err_bin_or_items_missing:'बिन या आइटम नहीं हैं',err_session_not_found:'यह ऑनशेल्फ सेशन नहीं मिला (शायद हट गया)',
 err_session_create_failed:'सेशन नहीं बन पाया, दोबारा कोशिश करें',err_bad_request:'गलत अनुरोध'}
@@ -527,7 +529,9 @@ function renderData(){
     sub.textContent=t('sess_sub',{b:s.bins,r:s.rows.length,q:s.qty,t:hm(s.ts)+(s.end?' – '+hm(s.end):'')});
     i.append(ttl,pl,sub);
     const bt=document.createElement('button');bt.className='btn p';bt.textContent='⬇ Excel';bt.onclick=()=>downloadSession(s);
-    d.append(i,bt);SL.append(d);
+    const bd=document.createElement('button');bd.className='btn d';bd.textContent='🗑';bd.title=t('del_t');bd.onclick=()=>deleteSession(s);
+    const ac=document.createElement('div');ac.className='acts';ac.append(bt,bd);
+    d.append(i,ac);SL.append(d);
   });
   if(!ss.length){SL.innerHTML='<div class="mut"></div>';SL.firstChild.textContent=t('no_sess');}
   const list=ss.flatMap(s=>s.rows.map(r=>({...r,s})));
@@ -586,6 +590,15 @@ $('dl').onclick=()=>{
   const fn=selDate==='ALL'?'Onshelf_All_Dates.xlsx':'Onshelf_'+selDate+'_AllUsers.xlsx';
   writeWb(wb,fn);$('msg2').textContent=t('dl_start',{f:fn});
 };
+async function deleteSession(s){
+  if(!online)return;
+  const l=(selDate==='ALL'?fd(s.date)+' · ':'')+label(s);
+  if(!confirm(t('c_del',{l,b:s.bins,q:s.qty})+(s.status==='open'?t('c_del_open'):'')))return;
+  try{
+    await api('DELETE','/api/saves',{ids:s.saves.map(v=>v.id),sids:s.legacy?[]:[s.id]});
+    $('msg2').textContent=t('del_ok');await refresh();
+  }catch(e){$('msg2').textContent=t('del_fail',{e:e.message});}
+}
 $('clr').onclick=async()=>{
   const ss=sessOf(selDate);
   if(!online||!ss.length)return;
